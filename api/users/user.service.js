@@ -46,13 +46,14 @@ module.exports = {
         })
     },
     getUserById:(id,callBack) => {
-        pool.query('select * from users where id = ?',[id],(error,results,fields) =>{
+        pool.query('select * from users left join pegawai on users.id = pegawai.id_user where users.id = ?',[id],(error,results,fields) =>{
             if(error){
                 return callBack(error);
             }
 
             return callBack(null,results[0]);
         })
+        
     },
     deleteUser:(data,callBack) => {
         pool.query(
@@ -72,13 +73,33 @@ module.exports = {
     },
     getUserByUsername:(username,callback) => {
         pool.query(
-            'select * from users where username = ?',[username],(error,results,fields) =>{
+            'select * from users left join pegawai on users.id = pegawai.id_user where username = ?',[username],(error,results,fields) =>{
                 if(error){
                     callback(error);
                 }
                 return callback(null,results[0]);
             }
         )
+    },
+    checkDevice:(data,callBack) =>{
+        pool.query('select * from users where id = ? and device_id = ?',[data.id_user,data.device_id],(error,results,fields) =>{
+            if(error){
+                return callBack(error);
+            }
+
+            return callBack(null,results);
+        })
+    },
+    
+    simpanDeviceUser:data => {
+        pool.query('update users set device_id=?,device_name=?,device_device=?,device_hardware=? where id = ?',
+        [
+            data.device_id,
+            data.device_name,
+            data.device_device,
+            data.device_hardware,
+            data.id
+        ])
     }
 
 };

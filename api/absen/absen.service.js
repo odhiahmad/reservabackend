@@ -44,6 +44,46 @@ module.exports = {
             return callBack(null,results)
         })
     },
+    storeAbsenCek1:(data,callBack) => {
+        pool.query('update absen set jam_check1=? where id_user = ? and tanggal = ?',
+        [
+            data.jam_check,
+            data.id_user,
+            data.tanggal
+        ],
+        (error, results,fields)=>{
+            if(error){
+                callBack(error)
+            }
+            return callBack(null,results)
+        })
+    },
+    storeAbsenCek2:(data,callBack) => {
+        pool.query('update absen set jam_check2=? where id_user = ? and tanggal = ?',
+        [
+            data.jam_check,
+            data.id_user,
+            data.tanggal
+        ],
+        (error, results,fields)=>{
+            if(error){
+                callBack(error)
+            }
+            return callBack(null,results)
+        })
+    },
+    getAbsenById:(id_user,tanggal,callBack) => {
+        pool.query('select * from absen where id_user = ? and tanggal = ?; select * from absen where id_user = ? and jam_keluar is not null limit 7',[id_user,tanggal,id_user],(error,results,fields) =>{
+            if(error){
+                return callBack(error);
+            }
+
+            return callBack(null,results);
+
+        })
+        
+    },
+    
 
    
 

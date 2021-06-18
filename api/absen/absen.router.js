@@ -4,6 +4,7 @@ const {checkToken} = require("../../auth/token_validation");
 
 router.post("/getLokasi",checkToken,cekLokasi);
 router.patch("/ambilAbsen",checkToken,ambilAbsen);
+router.post("/ambilAbsen",checkToken,ambilAbsen);
 
 
 module.exports = router;

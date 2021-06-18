@@ -1,4 +1,6 @@
-const { create,getUser,getUserById,deleteUser,getUserByUsername } = require("./user.service");
+const { create,getUser,getUserById,deleteUser,getUserByUsername,simpanDeviceUser } = require("./user.service");
+
+const { getAbsenById} = require("./../absen/absen.service");
 const {genSaltSync,hashSync,compareSync} = require("bcrypt");
 const { sign } = require("jsonwebtoken");
 
@@ -33,16 +35,57 @@ module.exports = {
             }
             if(!results){
                 return res.json({
-                    berhasil:0,
+                    berhasil:true,
                     pesan:'Record tidak ada'
                 })
             }
             return res.json({
-                berhasil:1,
+                berhasil:true,
                 data:results
             })
         })
     },
+    getUserAbsenById:(req,res) =>{
+        const id = req.params.id;
+        const tanggal = req.params.tanggal;
+        getUserById(id,(err,results) =>{
+            if(err){
+                console.log(err)
+                return;
+            }
+            if(!results){
+                return res.json({
+                    berhasil:true,
+                    pesan:'Record tidak ada'
+                })
+            }
+
+            const dataUser = results;
+            getAbsenById(id,tanggal,(err,results) =>{
+                if(err){
+                    console.log(err)
+                    return;
+                }
+                if(!results){
+                    return res.json({
+                        berhasil:true,
+                        dataAbsenLimit:null,
+                        dataUser:dataUser
+                    })
+                }
+                return res.json({
+                    berhasil:true,
+                    dataAbsenLimit:results[1],
+                    dataAbsen:results[0],
+                    dataUser:dataUser
+                   
+
+                })
+            })
+        })
+
+    },
+   
     getUser:(req,res) => {
         getUser((err,results) => {
             if(err){
@@ -87,12 +130,16 @@ module.exports = {
                 });
             }
             const result = compareSync(body.password,results.password);
-
+            
             if(result){
+                body.id = results.id;
+                if(results.device_id === null){
+                    simpanDeviceUser(body)
+                }
                 results.password = undefined;
                 const jsonToken = sign({result:results},"qwe1234",{expiresIn: "7d"});
                 return res.json({
-                    berhasil:1,
+                    berhasil:true,
                     pesan:'Login Berhasil',
                     token:jsonToken,
                 });
