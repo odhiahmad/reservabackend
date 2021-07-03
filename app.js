@@ -5,8 +5,14 @@ const userRouter = require("./api/users/user.router")
 const pegawaiRouter = require("./api/pegawai/pegawai.router")
 const absenRouter = require("./api/absen/absen.router")
 const statistikRouter = require("./api/statistik/statistik.router")
+const cors = require('cors');
 
 app.use(express.json());
+app.use((req,res,next)=>{
+    res.header('Access-Control-Allow-Origin', '*');
+    next();
+})
+app.use(cors());
 
 app.use("/api/users",userRouter);
 app.use("/api/pegawai",pegawaiRouter);

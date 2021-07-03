@@ -1,5 +1,9 @@
 const pool = require("../../config/database");
 const moment = require('moment');
+const Sequelize = require("sequelize");
+const db =  "../../config/dbSequelize.js";
+const { DataTypes } = Sequelize;
+
 
 moment.locale('id');  
 
@@ -36,7 +40,8 @@ module.exports = {
 
             });
     },
-    getUser:callBack => {
+    
+    getUser:(page,limit,sortBy,search,callBack) => {
         pool.query('select * from users',[],(error,results,fields) =>{
             if(error){
                 return callBack(error);
@@ -45,6 +50,7 @@ module.exports = {
             return callBack(null,results);
         })
     },
+    
     getUserById:(id,callBack) => {
         pool.query('select * from users left join pegawai on users.id = pegawai.id_user where users.id = ?',[id],(error,results,fields) =>{
             if(error){
