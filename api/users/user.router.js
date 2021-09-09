@@ -1,15 +1,15 @@
-const { createUser, getUserAbsenById, getUser, getUserById, deleteUser, login } = require("./user.controller");
+const { grantAccess, createUser, getUser, getUserById, aktifUserBanyak, nonAktifUserBanyak, editUser } = require("./user.controller");
 const router = require("express").Router();
 const { checkToken } = require("../../auth/token_validation");
 
+router.post("/createUser", createUser);
+router.post("/getUser", checkToken, grantAccess('readAny', 'user'), getUser);
+router.post("/aktifUserBanyak", checkToken, grantAccess('updateAny', 'user'), aktifUserBanyak);
+router.post("/nonAktifUserBanyak", checkToken, nonAktifUserBanyak);
 
-router.post("/create", checkToken, createUser);
-router.post("/getUser", checkToken, getUser);
+router.patch("/editUser", checkToken, grantAccess('updateAny', 'user'), editUser);
 
-router.get("/getUserById/:id", checkToken, getUserById);
-router.get("/getUserAbsenById/:id", checkToken, getUserAbsenById);
-router.delete("/deleteUser", checkToken, deleteUser);
-router.post('/login', login);
+router.get("/getUserById/:id", checkToken, grantAccess('readAny', 'user'), getUserById);
 
 
 module.exports = router;

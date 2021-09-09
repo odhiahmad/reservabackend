@@ -1,210 +1,313 @@
-const { genSaltSync, hashSync, compareSync } = require("bcrypt");
-const { sign } = require("jsonwebtoken");
+const { genSaltSync, hashSync } = require("bcrypt");
+
 const model = require('../../models/index');
+const { Op } = require("sequelize");
+const AccessControl = require("accesscontrol");
+
+function makeid(length) {
+  var result = '';
+  var characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  var charactersLength = characters.length;
+  for (var i = 0; i < length; i++) {
+    result += characters.charAt(Math.floor(Math.random() *
+      charactersLength));
+  }
+  return result;
+}
+
+async function isDuplicate(email) {
+
+  if (cekDuplicate === null) {
+    return 0
+  } else {
+    return 1
+  }
+}
 
 module.exports = {
+  grantAccess: function (action, resource) {
+    return async (req, res, next) => {
+      try {
+        const roleUser = req.user.roleUser.nama;
+        const role = await model.fungsi.findAll({
+          where: {
+            idRole: req.user.roleUser.id
+          },
+          include: ['userFungsi']
+        });
+
+        const dataRole = [];
+        var nomor = 0;
+        for (let i = 0; i < role.length; i++) {
+          for (let j = 0; j < role[i].fungsi.length; j++) {
+            dataRole[nomor] = {
+              role: roleUser,
+              resource: role[i].userFungsi.nama,
+              action: role[i].fungsi[j],
+              attributes: '*'
+            }
+            nomor++;
+          }
+        }
+        const ac = new AccessControl(dataRole);
+        const permission = ac.can(roleUser)[action](resource);
+        if (!permission.granted) {
+          return res.status(401).json({
+            error: "Oppsss, anda tidak punya akses untuk kesini!",
+            data: []
+          });
+        }
+        next()
+
+      } catch (error) {
+        next(error)
+      }
+    }
+  },
+
+
+
   createUser: async (req, res, next) => {
     try {
-      const {
-        username,
-        password,
-        role,
-      } = req.body;
-
+      const body = req.body.data;
       const salt = genSaltSync(10);
       body.password = hashSync(body.password, salt);
-      const users = await model.users.create({
-        username: username,
-        password: password,
-        role: role,
+      const user = await model.user.create({
+        email: body.email,
+        nama: body.nama,
+        password: body.password,
+        role: body.role,
+        status: 1,
       });
-      if (users) {
-        res.status(200).json({
-          'status': 'OK',
-          'messages': 'User berhasil ditambahkan',
-          'data': users,
-        })
-      }
+
+      // const dataCreate = []
+      // for (let i = 0; i < 400000; i++) {
+      //   dataCreate.push({
+      //     email: 'lala' + makeid(10) + 'omi' + makeid(10),
+      //     nama: 'Halo Omi',
+      //     password: body.password,
+      //     role: body.role,
+      //     status: 1,
+      //   })
+      // }
+
+      // const create = await model.user.bulkCreate(dataCreate)
+
+      res.status(200).json({
+        status: 'OK',
+        pesan: 'User berhasil ditambahkan',
+        data: user,
+      })
+
     } catch (err) {
       res.status(400).json({
-        'status': 'ERROR',
-        'messages': err.message,
-        'data': {},
+        status: 'ERROR',
+        pesan: err.message,
+        data: {},
+      })
+    }
+  },
+  editUser: async (req, res, next) => {
+    try {
+      const body = req.body.data;
+      const cekDuplicate = await model.user.findOne({ where: { email: body.email, id: { [Op.not]: body.id } } })
+      console.log(cekDuplicate)
+      if (cekDuplicate === null) {
+        if (body.password === "") {
+          const user = await model.user.update({
+            email: body.email,
+            nama: body.nama,
+            role: body.role,
+          }, {
+            where: {
+              id: body.id
+            }
+          });
+
+          res.status(200).json({
+            berhasil: true,
+            status: 'OK',
+            pesan: 'User berhasil ditambahkan',
+            data: user
+          })
+        } else {
+          const salt = genSaltSync(10);
+          body.password = hashSync(body.password, salt);
+          const user = await model.user.update({
+            email: body.email,
+            nama: body.nama,
+            password: body.password,
+            role: body.role,
+          }, {
+            where: {
+              id: body.id
+            }
+          });
+
+          res.status(200).json({
+            berhasil: true,
+            status: 'OK',
+            pesan: 'User berhasil ditambahkan',
+            data: user
+          })
+        }
+      } else {
+        res.status(200).json({
+          berhasil: false,
+          status: 'OK',
+          pesan: 'Email yang ada inputkan sudah terdaftar',
+
+        })
+      }
+
+    } catch (err) {
+      res.status(400).json({
+        status: 'ERROR',
+        pesan: err.message,
+        data: {},
       })
     }
   },
   getUserById: async (req, res, next) => {
     const id = req.params.id;
     try {
-      const users = await model.users.findByPk(id);
-      if (users.length !== 0) {
-        res.json({
-          'status': 'OK',
-          berhasil: true,
-          'messages': '',
-          'data': users
-        })
-      } else {
-        res.json({
-          'status': 'ERROR',
-          berhasil: true,
-          'messages': 'EMPTY',
-          'data': {}
-        })
-      }
-    } catch (err) {
-      res.json({
-        berhasil: false,
-        'status': 'ERROR',
-        'messages': err.message,
-        'data': {}
-      })
-    }
-  },
-  getUserAbsenById: async (req, res, next) => {
-    const id = req.params.id;
-    try {
-      const users = await model.users.findByPk(id, { include: ['absen'] });
-      if (users.length !== 0) {
-        res.json({
-          'status': 'OK',
-          berhasil: true,
-          'messages': '',
-          'data': users
-        })
-      } else {
-        res.json({
-          'status': 'ERROR',
-          berhasil: true,
-          'messages': 'EMPTY',
-          'data': {}
-        })
-      }
-    } catch (err) {
-      res.json({
-        berhasil: false,
-        'status': 'ERROR',
-        'messages': err.message,
-        'data': {}
-      })
-    }
-  },
+      const user = await model.user.findByPk(id);
 
+      if (user.length !== 0) {
+        res.json({
+          status: 'OK',
+          berhasil: true,
+          pesan: '',
+          data: user,
+        })
+      } else {
+        res.json({
+          status: 'ERROR',
+          berhasil: true,
+          pesan: 'EMPTY',
+          data: {}
+        })
+      }
+    } catch (err) {
+      res.json({
+        berhasil: false,
+        status: 'ERROR',
+        pesan: err.message,
+        data: {}
+      })
+    }
+  },
   getUser: async (req, res, next) => {
     const body = req.body;
-
     try {
-      const users = await model.users.findAndCountAll({
-        // where: { role: 'Admin' },
-        offset: parseInt(body.page), limit: parseInt(body.size), include: ['pegawai'], order: [
+      const user = await model.user.findAndCountAll({
+        where: {
+          email: {
+            [Op.like]: `%${body.cari}%`
+          }
+        },
+        offset: parseInt(body.page), limit: parseInt(body.size), include: ['roleUser'], order: [
           [body.sortField, body.sortOrder],
         ]
       });
-      if (users.length !== 0) {
+      if (user.length !== 0) {
         res.json({
-          'status': 'OK',
+          status: 'OK',
           berhasil: true,
-          totalPage: users.count,
+          totalPage: user.count,
           limit: body.size,
           page: body.page,
-          'data': users,
-
+          data: user,
         })
       } else {
         res.json({
-          'status': 'ERROR',
+          status: 'ERROR',
           berhasil: true,
-          'messages': 'EMPTY',
-          'data': {}
+          pesan: 'EMPTY',
+          data: {}
         })
       }
     } catch (err) {
       res.json({
         berhasil: false,
-        'status': 'ERROR',
-        'messages': err.message,
-        'data': {}
+        status: 'ERROR',
+        pesan: err.message,
+        data: {}
       })
     }
   },
 
-
   deleteUser: async (req, res, next) => {
     try {
-      const usersId = req.params.id;
-      const users = await model.users.destroy({
+      const userId = req.params.id;
+      const user = await model.user.destroy({
         where: {
-          id: usersId
+          id: userId
         }
       })
-      if (users) {
+      if (user) {
         res.json({
-          'status': 'OK',
-          'messages': 'User berhasil dihapus',
-          'data': users,
+          status: 'OK',
+          pesan: 'User berhasil dihapus',
+          data: user,
         })
       }
     } catch (err) {
       res.status(400).json({
-        'status': 'ERROR',
-        'messages': err.message,
-        'data': {},
+        status: 'ERROR',
+        pesan: err.message,
+        data: {},
       })
     }
   },
-  login: async (req, res, next) => {
-    const body = req.body;
+  aktifUserBanyak: async (req, res, next) => {
     try {
-      const results = await model.users.findOne({
+
+      const body = req.body;
+      const user = await model.user.update({ status: 1 }, {
         where: {
-          username: body.username
+          id: body.id
         }
-      });
-      if (results.length !== 0) {
-        const result = compareSync(body.password, results.password);
-        if (result) {
-          body.id = results.id;
-          if (results.device_id === null) {
-            await model.users.update({
-              device_id: body.device_id,
-              device_name: body.device_name,
-              device_device: body.device_device,
-              device_hardware: body.device_hardware
-            }, {
-              where: {
-                id: body.id
-              }
-            });
-          }
-          results.password = undefined;
-          const jsonToken = sign({ result: results }, "qwe1234", { expiresIn: "7d" });
-          return res.json({
-            berhasil: true,
-            pesan: 'Login Berhasil',
-            data: results,
-            token: jsonToken,
-          });
-        } else {
-          return res.json({
-            berhasil: false,
-            data: 'Email atau Password salah'
-          })
-        }
-      } else {
-        return res.json({
-          berhasil: false,
-          data: "Username atau password salah"
-        });
+      })
+      if (user) {
+        res.json({
+          status: 'OK',
+          pesan: 'User berhasil di aktifkan',
+        })
       }
-    }
-    catch (err) {
-      res.json({
-        berhasil: false,
-        'status': 'ERROR',
-        'messages': err.message,
-        'data': {}
+    } catch (err) {
+      res.status(400).json({
+        status: 'ERROR',
+        pesan: err.message,
+        data: {},
       })
     }
+  },
+  nonAktifUserBanyak: async (req, res, next) => {
+    try {
 
-  }
+      const body = req.body;
+      const user = await model.user.update({ status: 0 }, {
+        where: {
+          id: body.id
+        }
+      })
+      if (user) {
+        res.json({
+          status: 'OK',
+          pesan: 'User berhasil di non aktifkan',
+        })
+      }
+    } catch (err) {
+      res.status(400).json({
+        status: 'ERROR',
+        pesan: err.message,
+        data: {},
+      })
+    }
+  },
 }
+
+
+
+
